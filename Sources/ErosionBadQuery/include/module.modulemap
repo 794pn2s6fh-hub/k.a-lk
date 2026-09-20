@@ -1,0 +1,4 @@
+module BadQuery [system] {
+    header "bad_query.h"
+    export *
+}
