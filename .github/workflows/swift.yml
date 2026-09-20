@@ -1,0 +1,57 @@
+name: Build ErosionUIBridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -scheme ErosionUIBridge
+
+      - name: Build iOS framework
+        run: |
+          xcodebuild \
+            -scheme ErosionUIBridge \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -derivedDataPath build \
+            -sdk iphoneos \
+            BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
+            SKIP_INSTALL=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Find framework
+        run: |
+          find build -name "ErosionUIBridge.framework" -type d -print
+
+      - name: Package framework
+        run: |
+          mkdir -p artifact
+          FRAMEWORK=$(find build -name "ErosionUIBridge.framework" -type d | head -n 1)
+          if [ -z "$FRAMEWORK" ]; then
+            echo "ERROR: Framework not found"
+            exit 1
+          fi
+          ditto "$FRAMEWORK" "artifact/ErosionUIBridge.framework"
+          cd artifact
+          zip -r ErosionUIBridge.framework.zip ErosionUIBridge.framework
+
+      - name: Upload framework
+        uses: actions/upload-artifact@v4
+        with:
+          name: ErosionUIBridge-iOS
+          path: artifact/ErosionUIBridge.framework.zip
